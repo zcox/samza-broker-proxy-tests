@@ -87,15 +87,10 @@ object RestoreStoreSpec extends Specification {
     val zkConnect: String = TestZKUtils.zookeeperConnect
     val zookeeper = new EmbeddedZookeeper(zkConnect)
 
-    val brokerId1 = 0
-    val brokerId2 = 1
-    val brokerId3 = 2
+    val brokerIds = 0 to 2
     val ports = TestUtils.choosePorts(3)
-    val (port1, port2, port3) = (ports(0), ports(1), ports(2))
-    val kafkaConfig1 = TestUtils.createBrokerConfig(brokerId1, port1)
-    val kafkaBroker1 = TestUtils.createServer(new KafkaConfig(kafkaConfig1))
-    //TODO kafkaBroker2 and kafkaBroker3?
-    val metadataBrokerList = s"localhost:$port1"
+    val kafkaBrokers = for ((brokerId, port) <- brokerIds.zip(ports)) yield TestUtils.createServer(new KafkaConfig(TestUtils.createBrokerConfig(brokerId, port)))
+    val metadataBrokerList = s"localhost:${ports.head}"
 
     val jobFactory = new ThreadJobFactory //NOTE we were using JobRunner.run before, but that pretty much just creates a JobFactory, then calls getJob(config).submit
 
@@ -192,9 +187,11 @@ object RestoreStoreSpec extends Specification {
     }
 
     def shutdownKafkaBrokers(): Unit = {
-      kafkaBroker1.shutdown
-      kafkaBroker1.awaitShutdown()
-      Utils.rm(kafkaBroker1.config.logDirs)
+      for (kafkaBroker <- kafkaBrokers) {
+        kafkaBroker.shutdown
+        kafkaBroker.awaitShutdown()
+        Utils.rm(kafkaBroker.config.logDirs)
+      }
       zookeeper.shutdown
     }
 
