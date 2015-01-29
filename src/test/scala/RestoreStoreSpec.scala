@@ -77,6 +77,7 @@ object RestoreStoreSpec extends Specification {
       val (job2, task2) = runJob()
       sendToKafka("input", ("a", 4))
       getMessages[String, Int]("mystore", 3) must_== Seq(("a", 10))
+
       println("Stopping job the 2nd time")
       stopJob(job)
     }
@@ -136,8 +137,8 @@ object RestoreStoreSpec extends Specification {
       val job = jobFactory.getJob(new MapConfig(jobConfig))
       job.submit
       job.waitForStatus(Running, 60000) must_== Running
-      RestoreStoreSpecTask.awaitTaskRegistered
-      RestoreStoreSpecTask.tasks.size must_== 1
+      RestoreStoreSpecTask.awaitTaskRegistered //on 2nd time through, we block here for 60 secs because RestoreStoreSpecTask.init will never be called, because TaskStorageManager.stopConsumers is blocked by BrokerProxy.stop
+      RestoreStoreSpecTask.tasks.size must_== 1 //on 2nd time through this will fail because the task has not fully started yet
 
       val task = RestoreStoreSpecTask.tasks.head._2
       task.initFinished.await(60, TimeUnit.SECONDS)
@@ -148,7 +149,7 @@ object RestoreStoreSpec extends Specification {
 
     def stopJob(job: StreamJob): Unit = {
       job.kill
-      SamzaBrokerProxyThreadInterruptHack.interruptAllBrokerProxyThreads()
+      SamzaBrokerProxyThreadInterruptHack.interruptAllBrokerProxyThreads() //if this is removed, then the job will not shutdown, and test will fail on next line
       job.waitForFinish(60000) must_== UnsuccessfulFinish
       RestoreStoreSpecTask.tasks.clear()
     }
