@@ -107,7 +107,8 @@ object RestoreStoreSpec extends Specification {
       // "serializers.registry.string.class" -> "org.apache.samza.serializers.StringSerdeFactory",
       "serializers.registry.bytes.class" -> "org.apache.samza.serializers.ByteSerdeFactory",
       "serializers.registry.byteswrapper.class" -> "com.banno.samza.ByteArrayWrapperSerdeFactory",
-      "stores.mystore.factory" -> "org.apache.samza.storage.kv.RocksDbKeyValueStorageEngineFactory", //NOTE I think Samza's TestStatefulTask uses LevelDB here?
+      // "stores.mystore.factory" -> "org.apache.samza.storage.kv.RocksDbKeyValueStorageEngineFactory", //NOTE I think Samza's TestStatefulTask uses LevelDB here?
+      "stores.mystore.factory" -> "org.apache.samza.storage.kv.LevelDbKeyValueStorageEngineFactory", //test fails in same way using either LevelDB or RocksDB
       "stores.mystore.key.serde" -> "byteswrapper", //Samza's CachedStore cannot handle Array[Byte] keys (trollface)
       "stores.mystore.msg.serde" -> "bytes",
       "stores.mystore.changelog" -> "kafka.mystore",
