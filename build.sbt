@@ -21,6 +21,4 @@ libraryDependencies ++= {
 
 fork := true //https://github.com/facebook/rocksdb/issues/308#issuecomment-68015142
 
-javaOptions in run += "-Xms2560m -Xmx2560m -XX:+UseConcMarkSweepGC -server -d64"
-
 net.virtualvoid.sbt.graph.Plugin.graphSettings
