@@ -10,8 +10,7 @@ libraryDependencies ++= {
   val kafkaClientsVersion = "0.8.2-beta"
   Seq(
     "org.apache.samza" %% "samza-kafka" % samzaVersion exclude("log4j", "log4j"),
-    // "org.apache.samza" %% "samza-kv-rocksdb" % samzaVersion,
-    "org.apache.samza" %% "samza-kv-leveldb" % samzaVersion,
+    "org.apache.samza" %% "samza-kv-rocksdb" % samzaVersion,
     "org.apache.kafka" %% "kafka" % kafkaVersion classifier "test" exclude("log4j", "log4j"),
     "org.apache.kafka" % "kafka-clients" % kafkaClientsVersion,
     // "org.slf4j" % "log4j-over-slf4j" % "1.7.10",
