@@ -76,7 +76,7 @@ object RestoreStoreSpec extends Specification {
 
       val (job2, task2) = runJob()
       sendToKafka("input", ("a", 4))
-      getMessages[String, Int]("mystore", 3) must_== Seq(("a", 10))
+      getMessages[String, Int]("mystore", 1) must_== Seq(("a", 10))
 
       println("Stopping job the 2nd time")
       stopJob(job)
@@ -111,8 +111,8 @@ object RestoreStoreSpec extends Specification {
       "systems.kafka.samza.factory" -> "org.apache.samza.system.kafka.KafkaSystemFactory",
       // Always start consuming at offset 0. This avoids a race condition between
       // the producer and the consumer in this test (SAMZA-166, SAMZA-224).
-      "systems.kafka.samza.offset.default" -> "oldest", // applies to a nonempty topic <==================== same results with or without this
-      "systems.kafka.consumer.auto.offset.reset" -> "smallest", // applies to an empty topic <============== same results with or without this
+      // "systems.kafka.samza.offset.default" -> "oldest", // applies to a nonempty topic
+      // "systems.kafka.consumer.auto.offset.reset" -> "smallest", // applies to an empty topic
       // "systems.kafka.samza.msg.serde" -> "string",
       "systems.kafka.consumer.zookeeper.connect" -> zkConnect,
       "systems.kafka.producer.metadata.broker.list" -> metadataBrokerList,
@@ -145,7 +145,7 @@ object RestoreStoreSpec extends Specification {
 
     def stopJob(job: StreamJob): Unit = {
       job.kill
-      SamzaBrokerProxyThreadInterruptHack.interruptAllBrokerProxyThreads() //if this is removed, then the job will not shutdown, and test will fail on next line
+      // SamzaBrokerProxyThreadInterruptHack.interruptAllBrokerProxyThreads() //if this is removed, then the job will not shutdown, and test will fail on next line
       job.waitForFinish(60000) must_== UnsuccessfulFinish
       RestoreStoreSpecTask.tasks.clear()
     }
