@@ -99,20 +99,18 @@ object RestoreStoreSpec extends Specification {
       "job.name" -> "restore-store-spec",
       "task.class" -> "com.banno.samza.RestoreStoreSpecTask",
       "task.inputs" -> "kafka.input",
-      // "serializers.registry.string.class" -> "org.apache.samza.serializers.StringSerdeFactory",
       "serializers.registry.bytes.class" -> "org.apache.samza.serializers.ByteSerdeFactory",
       "serializers.registry.byteswrapper.class" -> "com.banno.samza.ByteArrayWrapperSerdeFactory",
       "stores.mystore.factory" -> "org.apache.samza.storage.kv.RocksDbKeyValueStorageEngineFactory", //NOTE I think Samza's TestStatefulTask uses LevelDB here?
-      "stores.mystore.key.serde" -> "byteswrapper", //Samza's CachedStore cannot handle Array[Byte] keys (trollface)
+      "stores.mystore.key.serde" -> "byteswrapper", //Samza's CachedStore cannot handle Array[Byte] keys
       "stores.mystore.msg.serde" -> "bytes",
       "stores.mystore.changelog" -> "kafka.mystore",
 
       "systems.kafka.samza.factory" -> "org.apache.samza.system.kafka.KafkaSystemFactory",
       // Always start consuming at offset 0. This avoids a race condition between
       // the producer and the consumer in this test (SAMZA-166, SAMZA-224).
-      // "systems.kafka.samza.offset.default" -> "oldest", // applies to a nonempty topic
-      // "systems.kafka.consumer.auto.offset.reset" -> "smallest", // applies to an empty topic
-      // "systems.kafka.samza.msg.serde" -> "string",
+      // "systems.kafka.samza.offset.default" -> "oldest", // applies to a nonempty topic <================= test works without this
+      // "systems.kafka.consumer.auto.offset.reset" -> "smallest", // applies to an empty topic <=========== test works without this
       "systems.kafka.consumer.zookeeper.connect" -> zkConnect,
       "systems.kafka.producer.metadata.broker.list" -> metadataBrokerList,
       // Since using state, need a checkpoint manager
@@ -121,19 +119,19 @@ object RestoreStoreSpec extends Specification {
       "task.checkpoint.replication.factor" -> "1",
       // However, don't have the inputs use the checkpoint manager
       // since the second part of the test expects to replay the input streams.
-      // "systems.kafka.streams.input.samza.reset.offset" -> "true" //we do not want the job to re-process its input stream when it starts the 2nd time
+      // "systems.kafka.streams.input.samza.reset.offset" -> "true" //<=========== we do *not* want the job to re-process its input stream when it starts the 2nd time
 
       //Banno-specific config starts here:
-      "systems.kafka.producer.batch.num.messages" -> "1",
-      "stores.mystore.object.cache.size" -> "0"
+      "systems.kafka.producer.batch.num.messages" -> "1", //immediately send messages to kafka topics
+      "stores.mystore.object.cache.size" -> "0" //immediately send puts to key-value store
     )
 
     def runJob(): (StreamJob, RestoreStoreSpecTask) = {
       val job = jobFactory.getJob(new MapConfig(jobConfig))
       job.submit
       job.waitForStatus(Running, 60000) must_== Running
-      RestoreStoreSpecTask.awaitTaskRegistered //on 2nd time through, we block here for 60 secs because RestoreStoreSpecTask.init will never be called, because TaskStorageManager.stopConsumers is blocked by BrokerProxy.stop
-      RestoreStoreSpecTask.tasks.size must_== 1 //on 2nd time through this will fail because the task has not fully started yet
+      RestoreStoreSpecTask.awaitTaskRegistered
+      RestoreStoreSpecTask.tasks.size must_== 1
 
       val task = RestoreStoreSpecTask.tasks.head._2
       task.initFinished.await(60, TimeUnit.SECONDS)
@@ -144,8 +142,7 @@ object RestoreStoreSpec extends Specification {
 
     def stopJob(job: StreamJob): Unit = {
       job.kill
-      // SamzaBrokerProxyThreadInterruptHack.interruptAllBrokerProxyThreads() //if this is removed, then the job will not shutdown, and test will fail on next line
-      job.waitForFinish(60000) must_== UnsuccessfulFinish
+      job.waitForFinish(60000) must_== UnsuccessfulFinish //it's "unsuccessful" because job.kill throws an exception
       RestoreStoreSpecTask.tasks.clear()
     }
 
@@ -197,26 +194,5 @@ object RestoreStoreSpec extends Specification {
     def after = {
       shutdownKafkaBrokers()
     }
-  }
-}
-
-object SamzaBrokerProxyThreadInterruptHack {
-  //BrokerProxy threads currently take some extra manual labor to actually interrupt
-  val logger = LoggerFactory.getLogger(getClass)
-  val prefix = org.apache.samza.util.ThreadNamePrefix.SAMZA_THREAD_NAME_PREFIX + org.apache.samza.system.kafka.BrokerProxy.BROKER_PROXY_THREAD_NAME_PREFIX
-  def isBrokerProxyThread(thread: Thread): Boolean = thread.getName startsWith prefix
-  lazy val brokerProxyThreads = Thread.getAllStackTraces.keys filter isBrokerProxyThread
-  def interrupt(thread: Thread) = {
-    var count = 0
-    while(thread.isAlive) {
-      thread.interrupt
-      count += 1
-    }
-    logger.info(s"Took $count tries to interrupt ${thread.getName}")
-  }
-  def interruptAllBrokerProxyThreads() = {
-    logger.debug("Interrupting broker proxy threads...")
-    brokerProxyThreads foreach interrupt
-    logger.debug("Finished interrupting broker proxy threads")
   }
 }
