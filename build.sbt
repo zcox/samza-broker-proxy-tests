@@ -16,7 +16,8 @@ libraryDependencies ++= {
     "org.apache.kafka" % "kafka-clients" % kafkaClientsVersion,
     "org.slf4j" % "log4j-over-slf4j" % "1.7.10",
     "ch.qos.logback" % "logback-classic" % "1.0.13",
-    "org.specs2" %% "specs2" % "2.4.2" % "test"
+    "org.specs2" %% "specs2" % "2.4.2" % "test",
+    "com.novocode" % "junit-interface" % "0.11" % "test"
   )
 }
 
