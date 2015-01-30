@@ -13,9 +13,8 @@ libraryDependencies ++= {
     "org.apache.samza" %% "samza-kv-rocksdb" % samzaVersion,
     "org.apache.kafka" %% "kafka" % kafkaVersion classifier "test" exclude("log4j", "log4j"),
     "org.apache.kafka" % "kafka-clients" % kafkaClientsVersion,
-    // "org.slf4j" % "log4j-over-slf4j" % "1.7.10",
-    // "ch.qos.logback" % "logback-classic" % "1.0.13", <============================== this apparently causes BrokerProxy.stop to block, for some reason... .... ..... ... . . ..
-    "log4j" % "log4j" % "1.2.17", //kafka.utils.Logging does a `import org.apache.log4j.Logger` so our code will not even compile with out this #tisktisk
+    "org.slf4j" % "log4j-over-slf4j" % "1.7.10",
+    "ch.qos.logback" % "logback-classic" % "1.0.13",
     "org.specs2" %% "specs2" % "2.4.2" % "test"
   )
 }
